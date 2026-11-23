@@ -22,12 +22,28 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build single 64-bit (arm64-v8a) debug APK
-        run: gradle assembleDebug -Pandroid.injected.abi=arm64-v8a --stacktrace
+      - name: Locate Android project & build 64-bit debug APK
+        run: |
+          set -e
+          for z in *.zip; do
+            if [ -f "$z" ]; then
+              unzip -o "$z" -d extracted_project
+            fi
+          done
+
+          SETTINGS_FILE=$(find . -maxdepth 4 -name "settings.gradle.kts" -o -name "settings.gradle" | head -n 1)
+          if [ -z "$SETTINGS_FILE" ]; then
+            echo "settings.gradle / settings.gradle.kts not found!"
+            exit 1
+          fi
+
+          PROJECT_DIR=$(dirname "$SETTINGS_FILE")
+          echo "Using project directory: $PROJECT_DIR"
+          gradle -p "$PROJECT_DIR" assembleDebug -Pandroid.injected.abi=arm64-v8a --stacktrace
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-arm64-v8a-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: "**/app/build/outputs/apk/debug/*.apk"
           if-no-files-found: error
